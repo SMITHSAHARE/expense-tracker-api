@@ -1,0 +1,700 @@
+openapi: 3.0.0
+info:
+  title: Expense Tracker API
+  description: |
+    A secure REST API for managing personal expenses and income.
+    Register an account, log in to get a JWT token, then use it in the Authorization header as `Bearer <token>`.
+  version: 1.0.0
+  contact:
+    name: Expense Tracker Support
+
+servers:
+  - url: /api
+    description: API base path
+
+tags:
+  - name: Auth
+    description: Register, login, logout, and manage your profile
+  - name: Transactions
+    description: Create and manage income/expense transactions
+  - name: Categories
+    description: Manage spending categories
+  - name: Analytics
+    description: View summaries, breakdowns, and monthly trends
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: John Doe
+        email:
+          type: string
+          example: john@example.com
+        created_at:
+          type: string
+          example: "2024-01-15 10:30:00"
+        updated_at:
+          type: string
+          example: "2024-01-15 10:30:00"
+
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          example: 1
+        type:
+          type: string
+          enum: [income, expense]
+          example: expense
+        amount:
+          type: number
+          example: 250.75
+        category_id:
+          type: integer
+          nullable: true
+          example: 3
+        category_name:
+          type: string
+          nullable: true
+          example: Food
+        date:
+          type: string
+          example: "2024-01-15"
+        note:
+          type: string
+          nullable: true
+          example: "Grocery shopping at D-Mart"
+        created_at:
+          type: string
+          example: "2024-01-15 10:30:00"
+        updated_at:
+          type: string
+          example: "2024-01-15 10:30:00"
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        name:
+          type: string
+          example: Food
+        is_default:
+          type: integer
+          example: 1
+        user_id:
+          type: integer
+          nullable: true
+          example: null
+        created_at:
+          type: string
+          example: "2024-01-15 10:30:00"
+
+    SuccessResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+          example: Success
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        message:
+          type: string
+          example: Something went wrong
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+              message:
+                type: string
+
+    PaginatedResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+        pagination:
+          type: object
+          properties:
+            total:
+              type: integer
+              example: 100
+            page:
+              type: integer
+              example: 1
+            limit:
+              type: integer
+              example: 20
+            total_pages:
+              type: integer
+              example: 5
+            has_next:
+              type: boolean
+              example: true
+            has_prev:
+              type: boolean
+              example: false
+
+security:
+  - BearerAuth: []
+
+paths:
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  example: John Doe
+                email:
+                  type: string
+                  example: john@example.com
+                password:
+                  type: string
+                  example: mypassword123
+      responses:
+        "201":
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
+                          token:
+                            type: string
+                          token_expires_in:
+                            type: string
+                            example: "24h"
+        "400":
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: Email already exists
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and get JWT token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  example: john@example.com
+                password:
+                  type: string
+                  example: mypassword123
+      responses:
+        "200":
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
+                          token:
+                            type: string
+                          token_expires_in:
+                            type: string
+        "400":
+          description: Validation error
+        "401":
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout and invalidate token
+      responses:
+        "200":
+          description: Logged out successfully
+        "401":
+          description: Unauthorized
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      summary: Get the currently logged-in user's profile
+      responses:
+        "200":
+          description: Profile fetched
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          user:
+                            $ref: "#/components/schemas/User"
+        "401":
+          description: Unauthorized
+
+  /auth/profile:
+    put:
+      tags: [Auth]
+      summary: Update profile (name and/or email)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  example: Jane Doe
+                email:
+                  type: string
+                  example: jane@example.com
+      responses:
+        "200":
+          description: Profile updated
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "409":
+          description: Email already in use
+
+  /auth/change-password:
+    put:
+      tags: [Auth]
+      summary: Change password (requires current password)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, new_password]
+              properties:
+                current_password:
+                  type: string
+                  example: oldpassword123
+                new_password:
+                  type: string
+                  example: newpassword456
+      responses:
+        "200":
+          description: Password changed. Must log in again.
+        "400":
+          description: Validation error or wrong current password
+        "401":
+          description: Unauthorized
+
+  /transactions:
+    get:
+      tags: [Transactions]
+      summary: Get all transactions for the logged-in user
+      parameters:
+        - in: query
+          name: type
+          schema:
+            type: string
+            enum: [income, expense]
+          description: Filter by transaction type
+        - in: query
+          name: category_id
+          schema:
+            type: integer
+          description: Filter by category ID
+        - in: query
+          name: start_date
+          schema:
+            type: string
+          example: "2024-01-01"
+          description: Filter from this date (inclusive)
+        - in: query
+          name: end_date
+          schema:
+            type: string
+          example: "2024-01-31"
+          description: Filter up to this date (inclusive)
+        - in: query
+          name: sort_by
+          schema:
+            type: string
+            enum: [date, amount, created_at]
+          description: Field to sort by (default date)
+        - in: query
+          name: sort_order
+          schema:
+            type: string
+            enum: [ASC, DESC]
+          description: Sort direction (default DESC)
+        - in: query
+          name: page
+          schema:
+            type: integer
+          description: Page number (default 1)
+        - in: query
+          name: limit
+          schema:
+            type: integer
+          description: Results per page (default 20, max 100)
+      responses:
+        "200":
+          description: Paginated list of transactions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedResponse"
+        "401":
+          description: Unauthorized
+
+    post:
+      tags: [Transactions]
+      summary: Create a new transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type, amount, date]
+              properties:
+                type:
+                  type: string
+                  enum: [income, expense]
+                  example: expense
+                amount:
+                  type: number
+                  example: 450.00
+                category_id:
+                  type: integer
+                  example: 1
+                date:
+                  type: string
+                  example: "2024-01-15"
+                note:
+                  type: string
+                  example: "Bought groceries"
+      responses:
+        "201":
+          description: Transaction created
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "404":
+          description: Category not found
+
+  /transactions/{id}:
+    get:
+      tags: [Transactions]
+      summary: Get a single transaction by ID
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transaction fetched
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    put:
+      tags: [Transactions]
+      summary: Update a transaction
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                type:
+                  type: string
+                  enum: [income, expense]
+                amount:
+                  type: number
+                category_id:
+                  type: integer
+                date:
+                  type: string
+                note:
+                  type: string
+      responses:
+        "200":
+          description: Transaction updated
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+    delete:
+      tags: [Transactions]
+      summary: Delete a transaction
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Transaction deleted
+        "401":
+          description: Unauthorized
+        "404":
+          description: Not found
+
+  /categories:
+    get:
+      tags: [Categories]
+      summary: Get all categories (default + user's custom)
+      responses:
+        "200":
+          description: List of categories
+        "401":
+          description: Unauthorized
+
+    post:
+      tags: [Categories]
+      summary: Create a custom category
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: Subscriptions
+      responses:
+        "201":
+          description: Category created
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "409":
+          description: Category name already exists
+
+  /categories/{id}:
+    put:
+      tags: [Categories]
+      summary: Update a custom category
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name:
+                  type: string
+                  example: Utilities
+      responses:
+        "200":
+          description: Category updated
+        "400":
+          description: Validation error
+        "401":
+          description: Unauthorized
+        "403":
+          description: Cannot modify default category or someone else's category
+        "404":
+          description: Not found
+
+    delete:
+      tags: [Categories]
+      summary: Delete a custom category
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Category deleted
+        "401":
+          description: Unauthorized
+        "403":
+          description: Cannot delete default category
+        "404":
+          description: Not found
+
+  /analytics/summary:
+    get:
+      tags: [Analytics]
+      summary: Get total income, expenses, and net balance for a period
+      parameters:
+        - in: query
+          name: start_date
+          required: true
+          schema:
+            type: string
+          example: "2024-01-01"
+        - in: query
+          name: end_date
+          required: true
+          schema:
+            type: string
+          example: "2024-01-31"
+      responses:
+        "200":
+          description: Financial summary
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/SuccessResponse"
+                  - type: object
+                    properties:
+                      data:
+                        type: object
+                        properties:
+                          period:
+                            type: object
+                            properties:
+                              start_date:
+                                type: string
+                              end_date:
+                                type: string
+                          total_income:
+                            type: number
+                          total_expenses:
+                            type: number
+                          net_balance:
+                            type: number
+        "400":
+          description: Missing or invalid dates
+        "401":
+          description: Unauthorized
+
+  /analytics/breakdown:
+    get:
+      tags: [Analytics]
+      summary: Get spending breakdown by category for a period
+      parameters:
+        - in: query
+          name: start_date
+          required: true
+          schema:
+            type: string
+          example: "2024-01-01"
+        - in: query
+          name: end_date
+          required: true
+          schema:
+            type: string
+          example: "2024-01-31"
+      responses:
+        "200":
+          description: Category breakdown with amounts and percentages
+        "400":
+          description: Missing or invalid dates
+        "401":
+          description: Unauthorized
+
+  /analytics/monthly:
+    get:
+      tags: [Analytics]
+      summary: Get month-over-month income and expense summary
+      parameters:
+        - in: query
+          name: months
+          schema:
+            type: integer
+          description: Number of past months to include (default 6, max 24)
+          example: 6
+      responses:
+        "200":
+          description: Monthly income/expense trend
+        "401":
+          description: Unauthorized
+          
