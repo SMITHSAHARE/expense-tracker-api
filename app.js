@@ -5,11 +5,11 @@ const YAML = require('yamljs');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 
-const { getDb } = require('./src/config/database');
-const authRoutes = require('./src/routes/authRoutes');
-const transactionRoutes = require('./src/routes/transactionRoutes');
-const categoryRoutes = require('./src/routes/categoryRoutes');
-const analyticsRoutes = require('./src/routes/analyticsRoutes');
+const { getDb } = require('./config/database');
+const authRoutes = require('./routes/authRoutes');
+const transactionRoutes = require('./routes/transactionRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const analyticsRoutes = require('./routes/analyticsRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -30,7 +30,7 @@ app.use((req, res, next) => {
 });
 
 // Swagger docs
-const swaggerDocument = YAML.load(path.join(__dirname, '../swagger/swagger.yaml'));
+YAML.load(path.join(__dirname, '../swagger/swagger.yaml'))
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
   customSiteTitle: 'Expense Tracker API Docs',
   customCss: '.swagger-ui .topbar { display: none }',
