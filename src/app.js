@@ -14,82 +14,41 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
 
-// Simple request logger
-app.use((req, res, next) => {
-  const start = Date.now();
-  res.on('finish', () => {
-    const ms = Date.now() - start;
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.originalUrl} → ${res.statusCode} (${ms}ms)`);
-  });
-  next();
-});
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(
+  YAML.load(path.join(__dirname, '../swagger/swagger.yaml'))
+));
 
-// Swagger docs
-const swaggerDocument = YAML.load(path.join(__dirname, '../swagger/swagger.yaml'));
-app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument, {
-  customSiteTitle: 'Expense Tracker API Docs',
-  customCss: '.swagger-ui .topbar { display: none }',
-}));
-
-// Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/transactions', transactionRoutes);
 app.use('/api/categories', categoryRoutes);
 app.use('/api/analytics', analyticsRoutes);
 
-// Health check
 app.get('/health', (req, res) => {
-  res.json({ success: true, message: 'Expense Tracker API is running', version: '1.0.0' });
+  res.json({ success: true, message: 'API is running' });
 });
 
-// Root route
 app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Welcome to the Expense Tracker API',
-    docs: '/docs',
-    health: '/health',
-  });
+  res.json({ success: true, message: 'Expense Tracker API', docs: '/docs' });
 });
 
-// 404 handler
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.method} ${req.originalUrl} not found`,
-  });
+  res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// Global error handler — never expose stack traces
-app.use((err, req, res, next) => {
-  console.error('Unhandled error:', err.message);
-  res.status(500).json({
-    success: false,
-    message: 'An unexpected error occurred. Please try again later.',
-  });
-});
-
-// Start server after DB is ready
 async function startServer() {
   try {
     await getDb();
-    console.log('✅ Database initialized');
-
+    console.log('Database initialized');
     app.listen(PORT, () => {
-      console.log(`\n🚀 Expense Tracker API running on http://localhost:${PORT}`);
-      console.log(`📄 Swagger docs at http://localhost:${PORT}/docs`);
-      console.log(`💚 Health check at http://localhost:${PORT}/health\n`);
+      console.log('Server running on port ' + PORT);
     });
   } catch (err) {
-    console.error('Failed to start server:', err.message);
+    console.error('Failed to start:', err.message);
     process.exit(1);
   }
 }
 
 startServer();
-
