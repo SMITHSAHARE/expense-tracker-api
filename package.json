@@ -5,7 +5,6 @@
   "main": "src/app.js",
   "scripts": {
     "start": "node src/app.js",
-    "dev": "nodemon src/app.js",
     "seed": "node src/utils/seed.js"
   },
   "dependencies": {
@@ -18,8 +17,5 @@
     "sql.js": "^1.10.3",
     "swagger-ui-express": "^5.0.0",
     "yamljs": "^0.3.0"
-  },
-  "devDependencies": {
-    "nodemon": "^3.1.0"
   }
 }
